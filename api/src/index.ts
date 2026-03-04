@@ -18,7 +18,23 @@ const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 // Middleware
-app.use("*", cors());
+const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  "*",
+  cors(
+    allowedOrigins.length > 0
+      ? {
+          origin: allowedOrigins,
+          allowMethods: ["GET", "OPTIONS"],
+          maxAge: 86400,
+        }
+      : undefined,
+  ),
+);
 app.use("/stats", rateLimit(30));
 app.use("*", rateLimit(100));
 
