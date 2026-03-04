@@ -27,35 +27,34 @@ async function cleanupTriggers() {
     await client.connect();
     console.log("[Cleanup] Connected to database");
 
-    // First: list ALL triggers in the database for diagnosis
+    // Query pg_trigger directly (information_schema.triggers may miss some)
     const allTriggers = await client.query(`
-      SELECT trigger_name, event_object_schema, event_object_table
-      FROM information_schema.triggers
-      GROUP BY trigger_name, event_object_schema, event_object_table
+      SELECT t.tgname AS trigger_name, c.relname AS table_name, n.nspname AS schema_name
+      FROM pg_trigger t
+      JOIN pg_class c ON t.tgrelid = c.oid
+      JOIN pg_namespace n ON c.relnamespace = n.oid
+      WHERE NOT t.tgisinternal
     `);
-    console.log(`[Cleanup] Total triggers in DB: ${allTriggers.rows.length}`);
+    console.log(`[Cleanup] Total user triggers in DB: ${allTriggers.rows.length}`);
     for (const row of allTriggers.rows) {
-      console.log(`[Cleanup]   - ${row.trigger_name} on ${row.event_object_schema}.${row.event_object_table}`);
+      console.log(`[Cleanup]   - ${row.trigger_name} on ${row.schema_name}.${row.table_name}`);
     }
 
-    // Find ALL reorg triggers
-    const result = allTriggers.rows.filter(
+    // Filter reorg triggers
+    const reorgTriggers = allTriggers.rows.filter(
       (row) => row.trigger_name.includes("reorg")
     );
 
-    if (result.length === 0) {
+    if (reorgTriggers.length === 0) {
       console.log("[Cleanup] No reorg triggers found");
       return;
     }
 
-    console.log(`[Cleanup] Found ${result.length} reorg triggers to drop`);
+    console.log(`[Cleanup] Found ${reorgTriggers.length} reorg triggers to drop`);
 
-    for (const row of result) {
-      const { trigger_name, event_object_schema, event_object_table } = row;
-      const qualifiedTable =
-        event_object_schema === "public"
-          ? `"${event_object_table}"`
-          : `"${event_object_schema}"."${event_object_table}"`;
+    for (const row of reorgTriggers) {
+      const { trigger_name, schema_name, table_name } = row;
+      const qualifiedTable = `"${schema_name}"."${table_name}"`;
       console.log(`[Cleanup] Dropping trigger ${trigger_name} on ${qualifiedTable}`);
       await client.query(
         `DROP TRIGGER IF EXISTS "${trigger_name}" ON ${qualifiedTable}`
