@@ -26,10 +26,12 @@ async function cleanupTriggers() {
     console.log("[Cleanup] Connected to database");
 
     // Find all reorg triggers for this indexer (across all schemas)
+    // Apibara converts hyphens to underscores in trigger names
+    const nameWithUnderscores = INDEXER_NAME.replace(/-/g, "_");
     const result = await client.query(`
       SELECT trigger_name, event_object_schema, event_object_table
       FROM information_schema.triggers
-      WHERE trigger_name LIKE '%_reorg_indexer_${INDEXER_NAME}_%'
+      WHERE trigger_name LIKE '%_reorg_%${nameWithUnderscores}%'
          OR trigger_name LIKE '%_reorg_%${INDEXER_NAME}%'
       GROUP BY trigger_name, event_object_schema, event_object_table
     `);
