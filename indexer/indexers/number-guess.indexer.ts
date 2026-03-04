@@ -145,11 +145,20 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
           const txWrapper = transactions[txIdx];
           const tx = txWrapper.transaction as any;
           if (tx) {
+            // Log raw transaction keys to diagnose structure
+            logger.info(`[TX DEBUG] txIdx=${txIdx}, top-level keys: ${Object.keys(tx).join(", ")}`);
+            if (tx.invokeV3) logger.info(`[TX DEBUG] invokeV3 keys: ${Object.keys(tx.invokeV3).join(", ")}`);
+            if (tx.invokeV1) logger.info(`[TX DEBUG] invokeV1 keys: ${Object.keys(tx.invokeV1).join(", ")}`);
+            if (tx.meta) logger.info(`[TX DEBUG] meta keys: ${Object.keys(tx.meta).join(", ")}`);
+
             const addr = tx.invokeV3?.senderAddress
               ?? tx.invokeV1?.senderAddress
               ?? tx.invokeV0?.contractAddress
               ?? tx.deployAccount?.contractAddressSalt;
-            if (addr) senderAddress = "0x" + BigInt(addr).toString(16);
+            if (addr) {
+              senderAddress = "0x" + BigInt(addr).toString(16);
+              logger.info(`[TX DEBUG] extracted addr=${senderAddress}, raw type=${typeof addr}, raw=${String(addr).slice(0, 40)}`);
+            }
           }
         }
 
