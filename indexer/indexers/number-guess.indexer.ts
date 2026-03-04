@@ -139,26 +139,27 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
         const eventIndex = event.eventIndex ?? 0;
 
         // Extract sender address from the transaction (if includeTransaction is enabled)
+        // Note: event.transactionIndex is block-relative, not array-relative,
+        // so we match by transaction hash instead.
         let senderAddress: string | undefined;
-        const txIdx = event.transactionIndex;
-        logger.info(`[TX DEBUG] transactionIndex=${txIdx}, transactions.length=${transactions?.length ?? "undefined"}, event keys: ${Object.keys(event).join(", ")}`);
-        if (txIdx != null && transactions && transactions[txIdx]) {
-          const txWrapper = transactions[txIdx];
-          const tx = txWrapper.transaction as any;
+        if (transactions && transactions.length > 0) {
+          const txHash = event.transactionHash;
+          const txWrapper = txHash
+            ? transactions.find((t: any) => t.transaction?.meta?.hash === txHash)
+            : transactions[0];
+          const tx = (txWrapper as any)?.transaction;
           if (tx) {
-            // Log raw transaction keys to diagnose structure
-            logger.info(`[TX DEBUG] txIdx=${txIdx}, top-level keys: ${Object.keys(tx).join(", ")}`);
+            logger.info(`[TX DEBUG] top-level keys: ${Object.keys(tx).join(", ")}`);
             if (tx.invokeV3) logger.info(`[TX DEBUG] invokeV3 keys: ${Object.keys(tx.invokeV3).join(", ")}`);
             if (tx.invokeV1) logger.info(`[TX DEBUG] invokeV1 keys: ${Object.keys(tx.invokeV1).join(", ")}`);
             if (tx.meta) logger.info(`[TX DEBUG] meta keys: ${Object.keys(tx.meta).join(", ")}`);
 
             const addr = tx.invokeV3?.senderAddress
               ?? tx.invokeV1?.senderAddress
-              ?? tx.invokeV0?.contractAddress
-              ?? tx.deployAccount?.contractAddressSalt;
+              ?? tx.invokeV0?.contractAddress;
             if (addr) {
               senderAddress = "0x" + BigInt(addr).toString(16);
-              logger.info(`[TX DEBUG] extracted addr=${senderAddress}, raw type=${typeof addr}, raw=${String(addr).slice(0, 40)}`);
+              logger.info(`[TX DEBUG] extracted addr=${senderAddress}`);
             }
           }
         }
