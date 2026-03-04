@@ -2,8 +2,14 @@ node_modules/
 dist/
 target/
 .snfoundry_cache/
+snfoundry_trace/
+coverage/
 .env
+.env.local
 *.lock
 !package-lock.json
 !Scarb.lock
 .DS_Store
+.apibara/
+.claude/
+*.pem

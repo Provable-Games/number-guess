@@ -195,6 +195,18 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
                 sql`UPDATE game_stats SET total_sessions = total_sessions + 1, last_updated = NOW() WHERE id = (SELECT id FROM game_stats LIMIT 1)`
               );
 
+              // Notify WebSocket subscribers
+              await db.execute(
+                sql`SELECT pg_notify('new_game', ${JSON.stringify({
+                  tokenId: tokenIdStr,
+                  settingsId: decoded.settingsId,
+                  rangeMin: decoded.rangeMin,
+                  rangeMax: decoded.rangeMax,
+                  maxAttempts: decoded.maxAttempts,
+                  status: "playing",
+                })})`
+              );
+
               break;
             }
 
@@ -287,6 +299,40 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
                       sql`UPDATE game_stats SET losses = losses + 1, last_updated = NOW() WHERE id = (SELECT id FROM game_stats LIMIT 1)`
                     );
                   }
+                }
+              }
+
+              // Notify WebSocket subscribers about the guess
+              const guessPayload = JSON.stringify({
+                tokenId: tokenIdStr,
+                guessValue: decoded.guessValue,
+                result: resultStr,
+                guessNumber: decoded.guessCount,
+                rangeMinAfter: decoded.rangeMin,
+                rangeMaxAfter: decoded.rangeMax,
+              });
+              await db.execute(sql`SELECT pg_notify('guess', ${guessPayload})`);
+
+              // Notify game_won / game_lost if applicable
+              if (resultStr === "correct") {
+                await db.execute(
+                  sql`SELECT pg_notify('game_won', ${JSON.stringify({
+                    tokenId: tokenIdStr,
+                    guessCount: decoded.guessCount,
+                  })})`
+                );
+              } else {
+                // Re-check if the game was lost (last attempt)
+                const lostCheck = await db.execute(
+                  sql`SELECT status FROM game_sessions WHERE token_id = ${tokenIdStr} AND status = 'lost' AND last_updated_block = ${blockNumber.toString()}::bigint LIMIT 1`
+                ) as { rows: Array<{ status: string }> };
+                if (lostCheck.rows && lostCheck.rows.length > 0) {
+                  await db.execute(
+                    sql`SELECT pg_notify('game_lost', ${JSON.stringify({
+                      tokenId: tokenIdStr,
+                      guessCount: decoded.guessCount,
+                    })})`
+                  );
                 }
               }
 
