@@ -1,0 +1,32 @@
+[package]
+name = "number_guess"
+version = "0.1.0"
+edition.workspace = true
+cairo-version.workspace = true
+
+[dependencies]
+starknet.workspace = true
+game_components_embeddable_game_standard.workspace = true
+
+openzeppelin_introspection.workspace = true
+openzeppelin_token.workspace = true
+openzeppelin_interfaces.workspace = true
+
+[dev-dependencies]
+snforge_std.workspace = true
+denshokan_testing = { git = "https://github.com/Provable-Games/denshokan.git", branch = "main" }
+denshokan_token = { git = "https://github.com/Provable-Games/denshokan.git", branch = "main" }
+denshokan_registry = { git = "https://github.com/Provable-Games/denshokan.git", branch = "main" }
+denshokan_renderer = { git = "https://github.com/Provable-Games/denshokan.git", branch = "main" }
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+build-external-contracts = [
+    "denshokan_token::denshokan::Denshokan",
+    "denshokan_registry::minigame_registry::MinigameRegistry",
+    "denshokan_renderer::default_renderer::DefaultRenderer",
+]
+
+[lib]
+name = "number_guess"

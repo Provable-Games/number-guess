@@ -1,0 +1,9 @@
+node_modules/
+dist/
+target/
+.snfoundry_cache/
+.env
+*.lock
+!package-lock.json
+!Scarb.lock
+.DS_Store

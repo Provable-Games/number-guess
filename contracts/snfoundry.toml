@@ -1,0 +1,29 @@
+# Starknet Foundry Configuration
+# https://foundry-rs.github.io/starknet-foundry/appendix/snfoundry-toml.html
+#
+# NOTE: snforge config (fuzzer_runs, fork) has moved to [workspace.tool.snforge] in Scarb.toml.
+# This file only contains sncast profiles.
+
+# Default profile for local development
+[sncast.default]
+url = "http://127.0.0.1:5050/"
+account = "devnet"
+wait-params = { timeout = 300, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true
+
+# Sepolia testnet profile
+[sncast.sepolia]
+url = "https://api.cartridge.gg/x/starknet/sepolia"
+account = "deployer"
+wait-params = { timeout = 300, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true
+
+# Mainnet profile
+[sncast.mainnet]
+url = "https://api.cartridge.gg/x/starknet/mainnet"
+account = "deployer"
+wait-params = { timeout = 500, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true

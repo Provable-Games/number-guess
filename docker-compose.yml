@@ -1,0 +1,63 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: number-guess-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: number_guess
+    volumes:
+      - number_guess_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d number_guess"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Number Guess Indexer
+  indexer:
+    build:
+      context: ./indexer
+      dockerfile: Dockerfile
+    container_name: number-guess-indexer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./indexer/.env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/number_guess
+    volumes:
+      - indexer_state:/app/.apibara/state
+
+  # Number Guess API
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: number-guess-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/number_guess
+      PORT: 3002
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost:5173}
+    ports:
+      - "3002:3002"
+
+volumes:
+  number_guess_postgres_data:
+    driver: local
+  indexer_state:
+    driver: local
+
+networks:
+  default:
+    name: number-guess-network

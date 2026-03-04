@@ -1,0 +1,46 @@
+[workspace]
+members = [
+    "packages/number_guess",
+]
+
+[workspace.package]
+edition = "2024_07"
+cairo-version = "2.15.0"
+authors = ["Provable Games"]
+license = "MIT"
+repository = "https://github.com/Provable-Games/number-guess"
+
+[workspace.dependencies]
+starknet = "2.15.1"
+game_components_embeddable_game_standard = { git = "https://github.com/Provable-Games/game-components.git", branch = "next" }
+game_components_utilities = { git = "https://github.com/Provable-Games/game-components.git", branch = "next" }
+game_components_test_common = { git = "https://github.com/Provable-Games/game-components.git", branch = "next" }
+
+openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_introspection = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_interfaces = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_access = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_upgrades = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.55.0" }
+
+[workspace.tool.fmt]
+sort-module-level-items = true
+
+[workspace.tool.snforge]
+exit_first = false
+fuzzer_runs = 256
+
+[[workspace.tool.snforge.fork]]
+name = "MAINNET_LATEST"
+url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
+block_id.tag = "latest"
+
+[[workspace.tool.snforge.fork]]
+name = "SEPOLIA_LATEST"
+url = "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10"
+block_id.tag = "latest"
+
+[profile.dev.cairo]
+unstable-add-statements-functions-debug-info = true
+unstable-add-statements-code-locations-debug-info = true
+inlining-strategy = "avoid"

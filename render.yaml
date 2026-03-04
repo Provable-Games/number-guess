@@ -1,0 +1,71 @@
+# Number Guess Infrastructure Blueprint
+# Deploy with: Connect repo to Render, or `render blueprint apply`
+#
+# Services:
+#   - PostgreSQL database (managed)
+#   - Indexer (background worker - processes Starknet events)
+#   - API server (web service - REST + WebSocket)
+
+databases:
+  - name: number-guess-db
+    plan: basic-256mb # ~$7/mo
+    databaseName: number_guess
+    postgresMajorVersion: 18
+    ipAllowList: []
+
+services:
+  # ===========================================
+  # API Server (REST + WebSocket)
+  # ===========================================
+  - type: web
+    name: number-guess-api
+    runtime: docker
+    plan: starter # $7/mo
+    region: oregon
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    autoDeploy: yes
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - api/**
+        - indexer/src/lib/schema.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3002"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: number-guess-db
+          property: connectionString
+      - key: CORS_ORIGIN
+        sync: false # Set manually in dashboard
+
+  # ===========================================
+  # Indexer (Background Worker)
+  # ===========================================
+  - type: worker
+    name: number-guess-indexer
+    runtime: docker
+    plan: starter # $7/mo
+    region: oregon
+    dockerfilePath: ./indexer/Dockerfile
+    dockerContext: ./indexer
+    autoDeploy: no
+    buildFilter:
+      paths:
+        - indexer/**
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: number-guess-db
+          property: connectionString
+      - key: NUMBER_GUESS_ADDRESS
+        sync: false
+      - key: STREAM_URL
+        sync: false
+      - key: STARTING_BLOCK
+        sync: false

@@ -1,0 +1,240 @@
+name: Main CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+      indexer: ${{ steps.filter.outputs.indexer }}
+      infra_ci: ${{ steps.filter.outputs.infra_ci }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - "contracts/packages/**"
+              - "contracts/.tool-versions"
+            indexer:
+              - "indexer/**"
+              - "api/**"
+            infra_ci:
+              - ".github/workflows/**"
+              - ".github/prompts/**"
+
+  infra-validate:
+    needs: changes
+    if: needs.changes.outputs.infra_ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate workflow YAML
+        run: |
+          YAML_CLI="yaml@2.8.1"
+          for file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -f "$file" ] || continue
+            npx -y "$YAML_CLI" valid < "$file"
+          done
+
+  lint:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          tool-versions: contracts/.tool-versions
+          cache: false
+
+      - name: Scarb fmt
+        run: cd contracts && scarb fmt --check --workspace
+
+  setup:
+    needs: [changes, lint]
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract tool versions
+        run: |
+          echo "SCARB_VERSION=$(grep '^scarb ' contracts/.tool-versions | awk '{print $2}')" >> "$GITHUB_ENV"
+          echo "FOUNDRY_VERSION=$(grep '^starknet-foundry ' contracts/.tool-versions | awk '{print $2}')" >> "$GITHUB_ENV"
+
+      - uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: ${{ env.SCARB_VERSION }}
+          cache: false
+
+      - uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Cache Scarb dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/scarb
+          key: ${{ runner.os }}-scarb-deps-${{ hashFiles('contracts/**/Scarb.toml', 'contracts/**/Scarb.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-scarb-deps-
+
+      - name: Cache Cargo (snforge plugin + Scarb Rust deps)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo
+          key: ${{ runner.os }}-cargo-snforge-${{ env.FOUNDRY_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-snforge-
+
+      - name: Fetch dependencies
+        run: cd contracts && scarb fetch
+
+      - name: Warm snforge plugin cache
+        run: snforge --version
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract tool versions
+        run: |
+          echo "SCARB_VERSION=$(grep '^scarb ' contracts/.tool-versions | awk '{print $2}')" >> "$GITHUB_ENV"
+          echo "FOUNDRY_VERSION=$(grep '^starknet-foundry ' contracts/.tool-versions | awk '{print $2}')" >> "$GITHUB_ENV"
+
+      - uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: ${{ env.SCARB_VERSION }}
+          cache: false
+
+      - uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Cache Scarb dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/scarb
+          key: ${{ runner.os }}-scarb-deps-${{ hashFiles('contracts/**/Scarb.toml', 'contracts/**/Scarb.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-scarb-deps-
+
+      - name: Cache Cargo (snforge plugin)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo
+          key: ${{ runner.os }}-cargo-snforge-${{ env.FOUNDRY_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-snforge-
+
+      - name: Cache tools
+        uses: actions/cache@v4
+        id: cache-tools
+        with:
+          path: |
+            ~/.local/bin/cairo-coverage
+            ~/.local/bin/universal-sierra-compiler
+          key: ${{ runner.os }}-tools-cairo-coverage-universal-sierra-compiler-v1
+
+      - name: Install tools
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          (curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh) &
+          (curl -L https://raw.githubusercontent.com/software-mansion/universal-sierra-compiler/master/scripts/install.sh | sh) &
+          wait
+
+      - name: Cache compiled packages
+        uses: actions/cache@v4
+        with:
+          path: contracts/target/
+          key: ${{ runner.os }}-target-number_guess-${{ env.SCARB_VERSION }}-${{ hashFiles('contracts/packages/**/*.cairo', 'contracts/**/Scarb.toml', 'contracts/**/Scarb.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-target-number_guess-${{ env.SCARB_VERSION }}-
+
+      - name: Run tests with coverage
+        run: cd contracts && snforge test -p number_guess --fuzzer-runs 256 --coverage
+
+  typecheck-indexer:
+    needs: changes
+    if: needs.changes.outputs.indexer == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript check (indexer)
+        run: cd indexer && npx tsc --noEmit
+
+      - name: TypeScript check (api)
+        run: cd api && npx tsc --noEmit
+
+  main-ci:
+    needs:
+      - changes
+      - infra-validate
+      - lint
+      - setup
+      - test
+      - typecheck-indexer
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate results
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          FAILED=$(echo "$NEEDS_JSON" | jq -r '
+            to_entries[]
+            | select(.value.result == "failure" or .value.result == "cancelled")
+            | .key
+          ')
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::Failing jobs:"
+            echo "$FAILED"
+            exit 1
+          fi
+
+          echo "All required jobs passed or were skipped"
