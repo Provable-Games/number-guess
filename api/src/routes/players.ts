@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { db } from "../db/client.js";
 import { gameSessions } from "../db/schema.js";
 import { eq, desc, sql } from "drizzle-orm";
+import { serializeBigInts } from "../utils/serialize.js";
 
 const app = new Hono();
 
@@ -35,11 +36,11 @@ app.get("/:tokenId", async (c) => {
 
   const stats = statsResult.rows?.[0] ?? {};
 
-  return c.json({
+  return c.json(serializeBigInts({
     tokenId,
     stats,
     sessions,
-  });
+  }));
 });
 
 export default app;

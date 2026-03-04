@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { db } from "../db/client.js";
 import { gameSessions } from "../db/schema.js";
 import { eq, desc, sql, and } from "drizzle-orm";
+import { serializeBigInts } from "../utils/serialize.js";
 
 const app = new Hono();
 
@@ -28,7 +29,7 @@ app.get("/", async (c) => {
     .limit(limit)
     .offset(offset);
 
-  return c.json({ data: results, pagination: { limit, offset } });
+  return c.json(serializeBigInts({ data: results, pagination: { limit, offset } }));
 });
 
 export default app;

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { db } from "../db/client.js";
 import { gameSessions, guesses } from "../db/schema.js";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { serializeBigInts } from "../utils/serialize.js";
 
 const app = new Hono();
 
@@ -34,14 +35,14 @@ app.get("/", async (c) => {
       .where(where),
   ]);
 
-  return c.json({
+  return c.json(serializeBigInts({
     data: results,
     pagination: {
       total: countResult[0]?.count ?? 0,
       limit,
       offset,
     },
-  });
+  }));
 });
 
 // GET /sessions/:id - Session detail with guesses
@@ -64,10 +65,10 @@ app.get("/:id", async (c) => {
     .where(eq(guesses.tokenId, session[0].tokenId))
     .orderBy(guesses.guessNumber);
 
-  return c.json({
+  return c.json(serializeBigInts({
     ...session[0],
     guesses: sessionGuesses,
-  });
+  }));
 });
 
 // GET /sessions/:id/guesses - Guess history for a session
@@ -90,7 +91,7 @@ app.get("/:id/guesses", async (c) => {
     .where(eq(guesses.tokenId, session[0].tokenId))
     .orderBy(guesses.guessNumber);
 
-  return c.json({ data: sessionGuesses });
+  return c.json(serializeBigInts({ data: sessionGuesses }));
 });
 
 export default app;
