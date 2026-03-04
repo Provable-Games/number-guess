@@ -138,13 +138,26 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
         const transactionHash = event.transactionHash ?? "0x0";
         const eventIndex = event.eventIndex ?? 0;
 
-        // Extract sender address from the transaction (if includeTransaction is enabled)
+        // Extract player address from the transaction
+        // For Cartridge Controller session-key txs, the invoke senderAddress is the
+        // session executor, NOT the player. The player's Controller address appears
+        // as the first call target in the multicall calldata:
+        //   calldata: [num_calls, player_controller_address, selector, ...]
         let senderAddress: string | undefined;
         if (transactions && transactions.length > 0) {
-          // Dump full structure of first transaction for diagnosis
-          const raw = transactions[0];
-          logger.info(`[TX DEBUG] transactions[0] keys: ${Object.keys(raw).join(", ")}`);
-          logger.info(`[TX DEBUG] transactions[0] JSON (truncated): ${JSON.stringify(raw, (_, v) => typeof v === "bigint" ? "0x" + v.toString(16) : v).slice(0, 500)}`);
+          const txData = (transactions[0] as any);
+          const invoke = txData?.transaction?.invokeV3 ?? txData?.transaction?.invokeV1;
+          if (invoke) {
+            const calldata: string[] = invoke.calldata ?? [];
+            if (calldata.length >= 2) {
+              // First target in multicall is the player's Controller address
+              senderAddress = calldata[1];
+            }
+            // Fallback to invoke sender if no calldata
+            if (!senderAddress) {
+              senderAddress = invoke.senderAddress;
+            }
+          }
         }
 
         if (keys.length === 0) continue;
