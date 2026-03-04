@@ -139,23 +139,31 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
         const eventIndex = event.eventIndex ?? 0;
 
         // Extract player address from the transaction
-        // For Cartridge Controller session-key txs, the invoke senderAddress is the
-        // session executor, NOT the player. The player's Controller address appears
-        // as the first call target in the multicall calldata:
-        //   calldata: [num_calls, player_controller_address, selector, ...]
+        // Two cases:
+        // 1. Direct wallet tx: senderAddress IS the player
+        // 2. Cartridge Controller session tx: senderAddress is the session executor,
+        //    and the player's Controller address is the first multicall target in calldata:
+        //    calldata: [num_calls, player_controller_address, selector, ...]
+        //    We detect case 2 when calldata[1] differs from senderAddress.
         let senderAddress: string | undefined;
         if (transactions && transactions.length > 0) {
           const txData = (transactions[0] as any);
           const invoke = txData?.transaction?.invokeV3 ?? txData?.transaction?.invokeV1;
           if (invoke) {
+            const invoker = invoke.senderAddress as string | undefined;
             const calldata: string[] = invoke.calldata ?? [];
+
             if (calldata.length >= 2) {
-              // First target in multicall is the player's Controller address
-              senderAddress = calldata[1];
-            }
-            // Fallback to invoke sender if no calldata
-            if (!senderAddress) {
-              senderAddress = invoke.senderAddress;
+              const firstTarget = calldata[1];
+              // If the first multicall target differs from the invoker,
+              // this is a session-key tx and the target is the player's address
+              if (invoker && firstTarget && BigInt(firstTarget) !== BigInt(invoker)) {
+                senderAddress = firstTarget;
+              } else {
+                senderAddress = invoker;
+              }
+            } else {
+              senderAddress = invoker;
             }
           }
         }
