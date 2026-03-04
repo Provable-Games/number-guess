@@ -12,8 +12,6 @@ import pg from "pg";
 
 const { Client } = pg;
 
-const INDEXER_NAME = "number-guess";
-
 async function cleanupTriggers() {
   const databaseUrl =
     process.env.DATABASE_URL ??
@@ -25,23 +23,20 @@ async function cleanupTriggers() {
     await client.connect();
     console.log("[Cleanup] Connected to database");
 
-    // Find all reorg triggers for this indexer
-    // Apibara converts hyphens to underscores in trigger names
-    const nameWithUnderscores = INDEXER_NAME.replace(/-/g, "_");
+    // Find ALL reorg triggers — don't filter by indexer name to avoid pattern mismatch
     const result = await client.query(`
       SELECT trigger_name, event_object_schema, event_object_table
       FROM information_schema.triggers
-      WHERE trigger_name LIKE '%_reorg_%${nameWithUnderscores}%'
-         OR trigger_name LIKE '%_reorg_%${INDEXER_NAME}%'
+      WHERE trigger_name LIKE '%reorg%'
       GROUP BY trigger_name, event_object_schema, event_object_table
     `);
 
     if (result.rows.length === 0) {
-      console.log("[Cleanup] No existing reorg triggers found");
+      console.log("[Cleanup] No reorg triggers found");
       return;
     }
 
-    console.log(`[Cleanup] Found ${result.rows.length} triggers to drop`);
+    console.log(`[Cleanup] Found ${result.rows.length} reorg triggers to drop`);
 
     for (const row of result.rows) {
       const { trigger_name, event_object_schema, event_object_table } = row;
@@ -55,7 +50,7 @@ async function cleanupTriggers() {
       );
     }
 
-    console.log("[Cleanup] All triggers dropped successfully");
+    console.log("[Cleanup] All reorg triggers dropped successfully");
   } catch (error) {
     console.error("[Cleanup] Error:", error);
     process.exit(1);
