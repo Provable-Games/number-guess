@@ -6,7 +6,7 @@
     "dev": "npm run db:cleanup && apibara dev",
     "build": "apibara build",
     "start": "npm run db:cleanup && apibara start",
-    "db:cleanup": "tsx scripts/cleanup-triggers.ts",
+    "db:cleanup": "node scripts/cleanup-triggers.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
