@@ -141,6 +141,7 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
         // Extract sender address from the transaction (if includeTransaction is enabled)
         let senderAddress: string | undefined;
         const txIdx = event.transactionIndex;
+        logger.info(`[TX DEBUG] transactionIndex=${txIdx}, transactions.length=${transactions?.length ?? "undefined"}, event keys: ${Object.keys(event).join(", ")}`);
         if (txIdx != null && transactions && transactions[txIdx]) {
           const txWrapper = transactions[txIdx];
           const tx = txWrapper.transaction as any;
