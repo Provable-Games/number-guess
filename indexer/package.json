@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npm run db:cleanup && apibara dev",
     "build": "apibara build",
-    "start": "npm run db:cleanup && apibara start",
+    "start": "npm run db:migrate && npm run db:cleanup && apibara start",
     "db:cleanup": "node scripts/cleanup-triggers.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -19,6 +19,7 @@
     "@apibara/indexer": "next",
     "@apibara/starknet": "next",
     "@apibara/plugin-drizzle": "next",
+    "drizzle-kit": "^0.30.0",
     "drizzle-orm": "^0.38.0",
     "pg": "^8.13.0",
     "starknet": "^9.2.1"
@@ -26,7 +27,6 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
-    "drizzle-kit": "^0.30.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

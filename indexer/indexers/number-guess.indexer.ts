@@ -93,9 +93,8 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
         persistState: true,
         indexerName: "number-guess",
         idColumn: "id",
-        migrate: {
-          migrationsFolder: "./migrations",
-        },
+        // Migrations run via drizzle-kit in the start script.
+        // Letting the plugin handle migrations causes duplicate trigger creation.
       }),
     ],
     hooks: {
