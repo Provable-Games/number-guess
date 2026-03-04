@@ -53,6 +53,7 @@ export const guesses = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     tokenId: numeric("token_id").notNull(),
+    player: text("player"),
     guessValue: integer("guess_value").notNull(),
     result: text("result").notNull(), // correct, too_low, too_high
     guessNumber: integer("guess_number").notNull(),

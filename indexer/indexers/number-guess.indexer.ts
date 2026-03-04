@@ -240,6 +240,7 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
                 .insert(schema.guesses)
                 .values({
                   tokenId: tokenIdStr,
+                  player: senderAddress ?? null,
                   guessValue: decoded.guessValue,
                   result: resultStr,
                   guessNumber: decoded.guessCount,
