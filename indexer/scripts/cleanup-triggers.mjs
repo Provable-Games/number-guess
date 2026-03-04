@@ -17,28 +17,40 @@ async function cleanupTriggers() {
     process.env.DATABASE_URL ??
     "postgres://postgres:postgres@localhost:5432/number_guess";
 
+  // Log which DB we're connecting to (mask password)
+  const safeUrl = databaseUrl.replace(/:([^@]+)@/, ":***@");
+  console.log(`[Cleanup] Connecting to: ${safeUrl}`);
+
   const client = new Client({ connectionString: databaseUrl });
 
   try {
     await client.connect();
     console.log("[Cleanup] Connected to database");
 
-    // Find ALL reorg triggers — don't filter by indexer name to avoid pattern mismatch
-    const result = await client.query(`
+    // First: list ALL triggers in the database for diagnosis
+    const allTriggers = await client.query(`
       SELECT trigger_name, event_object_schema, event_object_table
       FROM information_schema.triggers
-      WHERE trigger_name LIKE '%reorg%'
       GROUP BY trigger_name, event_object_schema, event_object_table
     `);
+    console.log(`[Cleanup] Total triggers in DB: ${allTriggers.rows.length}`);
+    for (const row of allTriggers.rows) {
+      console.log(`[Cleanup]   - ${row.trigger_name} on ${row.event_object_schema}.${row.event_object_table}`);
+    }
 
-    if (result.rows.length === 0) {
+    // Find ALL reorg triggers
+    const result = allTriggers.rows.filter(
+      (row) => row.trigger_name.includes("reorg")
+    );
+
+    if (result.length === 0) {
       console.log("[Cleanup] No reorg triggers found");
       return;
     }
 
-    console.log(`[Cleanup] Found ${result.rows.length} reorg triggers to drop`);
+    console.log(`[Cleanup] Found ${result.length} reorg triggers to drop`);
 
-    for (const row of result.rows) {
+    for (const row of result) {
       const { trigger_name, event_object_schema, event_object_table } = row;
       const qualifiedTable =
         event_object_schema === "public"
