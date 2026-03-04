@@ -63,6 +63,8 @@ services:
         fromDatabase:
           name: number-guess-db
           property: connectionString
+      - key: DNA_TOKEN
+        sync: false
       - key: NUMBER_GUESS_ADDRESS
         sync: false
       - key: STREAM_URL
