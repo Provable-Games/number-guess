@@ -140,12 +140,15 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
 
         // Extract player address from the transaction
         // Two cases:
-        // 1. Direct wallet tx: senderAddress IS the player
+        // 1. Direct wallet tx (ArgentX, Braavos): senderAddress IS the player,
+        //    calldata: [num_calls, game_contract, selector, ...]
         // 2. Cartridge Controller session tx: senderAddress is the session executor,
-        //    and the player's Controller address is the first multicall target in calldata:
         //    calldata: [num_calls, player_controller_address, selector, ...]
-        //    We detect case 2 when calldata[1] differs from senderAddress.
+        //    where player_controller_address != game_contract
+        // Detection: if calldata[1] is the game contract, it's case 1 (use senderAddress).
+        //            Otherwise it's case 2 (use calldata[1] as the player).
         let senderAddress: string | undefined;
+        const gameContractBigInt = BigInt(normalizedAddress);
         if (transactions && transactions.length > 0) {
           const txData = (transactions[0] as any);
           const invoke = txData?.transaction?.invokeV3 ?? txData?.transaction?.invokeV1;
@@ -155,12 +158,12 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
 
             if (calldata.length >= 2) {
               const firstTarget = calldata[1];
-              // If the first multicall target differs from the invoker,
-              // this is a session-key tx and the target is the player's address
-              if (invoker && firstTarget && BigInt(firstTarget) !== BigInt(invoker)) {
-                senderAddress = firstTarget;
-              } else {
+              if (firstTarget && BigInt(firstTarget) === gameContractBigInt) {
+                // Direct wallet: calling game contract directly, sender is the player
                 senderAddress = invoker;
+              } else if (firstTarget) {
+                // Controller session: first target is the player's Controller address
+                senderAddress = firstTarget;
               }
             } else {
               senderAddress = invoker;
