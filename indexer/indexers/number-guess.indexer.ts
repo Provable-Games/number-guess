@@ -83,6 +83,7 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
           address: normalizedAddress as `0x${string}`,
           keys: [EVENT_SELECTORS.GuessMade as `0x${string}`],
           includeReceipt: false,
+          includeTransaction: true,
         },
       ],
     },
@@ -115,7 +116,7 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
     async transform({ block }) {
       const logger = useLogger();
       const { db } = useDrizzleStorage();
-      const { events, header } = block;
+      const { events, transactions, header } = block;
 
       if (!header) {
         logger.warn("No header in block, skipping");
@@ -136,6 +137,21 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
         const data = event.data;
         const transactionHash = event.transactionHash ?? "0x0";
         const eventIndex = event.eventIndex ?? 0;
+
+        // Extract sender address from the transaction (if includeTransaction is enabled)
+        let senderAddress: string | undefined;
+        const txIdx = event.transactionIndex;
+        if (txIdx != null && transactions && transactions[txIdx]) {
+          const txWrapper = transactions[txIdx];
+          const tx = txWrapper.transaction as any;
+          if (tx) {
+            const addr = tx.invokeV3?.senderAddress
+              ?? tx.invokeV1?.senderAddress
+              ?? tx.invokeV0?.contractAddress
+              ?? tx.deployAccount?.contractAddressSalt;
+            if (addr) senderAddress = "0x" + BigInt(addr).toString(16);
+          }
+        }
 
         if (keys.length === 0) continue;
 
@@ -216,7 +232,7 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
               const resultStr = resultToString(decoded.result);
 
               logger.info(
-                `GuessMade: token=${tokenIdStr} guess=${decoded.guessValue} result=${resultStr} count=${decoded.guessCount} range=${decoded.rangeMin}-${decoded.rangeMax}`
+                `GuessMade: token=${tokenIdStr} guess=${decoded.guessValue} result=${resultStr} count=${decoded.guessCount} range=${decoded.rangeMin}-${decoded.rangeMax} player=${senderAddress ?? "unknown"}`
               );
 
               // Insert guess record
@@ -310,6 +326,7 @@ export default function numberGuessIndexer(runtimeConfig: ApibaraRuntimeConfig) 
                 guessNumber: decoded.guessCount,
                 rangeMinAfter: decoded.rangeMin,
                 rangeMaxAfter: decoded.rangeMax,
+                ...(senderAddress && { player: senderAddress }),
               });
               await db.execute(sql`SELECT pg_notify('guess', ${guessPayload})`);
 
