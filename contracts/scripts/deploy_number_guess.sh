@@ -179,7 +179,7 @@ if [ -f "$IMAGE_FILE" ]; then
     IMAGE_CD=$(encode_bytearray "$GAME_IMAGE")
 else
     print_warning "Game image not found at $IMAGE_FILE, using placeholder"
-    IMAGE_CD=$(encode_bytearray "https://numberguess.io/image.png")
+    IMAGE_CD=$(encode_bytearray "https://funfactory.gg/number-guess.png")
 fi
 
 sncast --profile "$PROFILE" --wait \
