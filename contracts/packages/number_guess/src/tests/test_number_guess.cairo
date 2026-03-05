@@ -580,7 +580,7 @@ fn test_details_game_details() {
 
     let details = IMinigameDetailsDispatcher { contract_address: address };
     let game_details = details.game_details(token_id);
-    assert!(game_details.len() == 9, "Should have 9 game details");
+    assert!(game_details.len() == 10, "Should have 10 game details");
 }
 
 // ==========================================================================
@@ -1323,7 +1323,7 @@ fn test_game_details_status_no_game() {
     let game_details = details.game_details(token_id);
     // Status field is at index 5
     let status_detail = game_details.at(5);
-    assert!(*status_detail.value == "No Game", "Status should be 'No Game'");
+    assert!(*status_detail.value == 'No Game', "Status should be 'No Game'");
 }
 
 #[test]
@@ -1336,7 +1336,7 @@ fn test_game_details_status_playing() {
 
     let game_details = details.game_details(token_id);
     let status_detail = game_details.at(5);
-    assert!(*status_detail.value == "Playing", "Status should be 'Playing'");
+    assert!(*status_detail.value == 'Playing', "Status should be 'Playing'");
 }
 
 #[test]
@@ -1367,7 +1367,7 @@ fn test_game_details_status_won() {
 
     let game_details = details.game_details(token_id);
     let status_detail = game_details.at(5);
-    assert!(*status_detail.value == "Won", "Status should be 'Won'");
+    assert!(*status_detail.value == 'Won', "Status should be 'Won'");
 }
 
 #[test]
@@ -1396,7 +1396,7 @@ fn test_game_details_status_lost() {
 
     let game_details = details.game_details(token_id);
     let status_detail = game_details.at(5);
-    assert!(*status_detail.value == "Lost", "Status should be 'Lost'");
+    assert!(*status_detail.value == 'Lost', "Status should be 'Lost'");
 }
 
 // --------------------------------------------------------------------------
@@ -1417,7 +1417,7 @@ fn test_settings_details_unlimited_attempts() {
     // settings[2] is "Max Attempts"
     let max_attempts_setting = settings_span.at(2);
     assert!(*max_attempts_setting.name == 'Max Attempts', "Third setting should be Max Attempts");
-    assert!(*max_attempts_setting.value == 0, "Easy mode should show 0 (unlimited)");
+    assert!(*max_attempts_setting.value == '0', "Easy mode should show '0' (unlimited)");
 }
 
 // --------------------------------------------------------------------------
@@ -1436,7 +1436,7 @@ fn test_settings_details_limited_attempts() {
     let settings_span = medium.settings;
     let max_attempts_setting = settings_span.at(2);
     assert!(*max_attempts_setting.name == 'Max Attempts', "Third setting should be Max Attempts");
-    assert!(*max_attempts_setting.value == 10, "Medium mode should show 10");
+    assert!(*max_attempts_setting.value == '10', "Medium mode should show '10'");
 }
 
 // --------------------------------------------------------------------------
@@ -1488,8 +1488,8 @@ fn test_game_details_batch() {
 
     let batch = details.game_details_batch(array![token1, token2].span());
     assert!(batch.len() == 2, "Should return 2 game detail spans");
-    assert!(batch.at(0).len() == 9, "Token1 should have 9 game details");
-    assert!(batch.at(1).len() == 9, "Token2 should have 9 game details");
+    assert!(batch.at(0).len() == 10, "Token1 should have 10 game details");
+    assert!(batch.at(1).len() == 10, "Token2 should have 10 game details");
 }
 
 // --------------------------------------------------------------------------
@@ -1667,10 +1667,10 @@ fn test_game_details_unlimited_max_attempts() {
     ng.new_game(token_id);
 
     let game_details = details.game_details(token_id);
-    // "Max Attempts" is at index 7
-    let max_attempts_detail = game_details.at(7);
-    assert!(*max_attempts_detail.name == "Max Attempts", "Index 7 should be Max Attempts");
-    assert!(*max_attempts_detail.value == "Unlimited", "Easy mode should show 'Unlimited'");
+    // "Max Attempts" is at index 8
+    let max_attempts_detail = game_details.at(8);
+    assert!(*max_attempts_detail.name == 'Max Attempts', "Index 8 should be Max Attempts");
+    assert!(*max_attempts_detail.value == '0', "Easy mode should show '0' (unlimited)");
 }
 
 #[test]
@@ -1683,9 +1683,9 @@ fn test_game_details_limited_max_attempts() {
     ng.new_game(token_id);
 
     let game_details = details.game_details(token_id);
-    let max_attempts_detail = game_details.at(7);
-    assert!(*max_attempts_detail.name == "Max Attempts", "Index 7 should be Max Attempts");
-    assert!(*max_attempts_detail.value == "10", "Medium mode should show '10'");
+    let max_attempts_detail = game_details.at(8);
+    assert!(*max_attempts_detail.name == 'Max Attempts', "Index 8 should be Max Attempts");
+    assert!(*max_attempts_detail.value == '10', "Medium mode should show '10'");
 }
 
 // --------------------------------------------------------------------------

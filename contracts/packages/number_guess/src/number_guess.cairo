@@ -212,6 +212,7 @@ pub mod NumberGuess {
     use game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent;
     use game_components_embeddable_game_standard::minigame::structs::GameDetail;
     use game_components_embeddable_game_standard::token::structs::unpack_settings_id;
+    use game_components_utilities::utils::encoding::u128_to_ascii_felt;
     use openzeppelin_introspection::src5::SRC5Component;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -381,32 +382,29 @@ pub mod NumberGuess {
             let max_attempts = self.max_attempts.entry(token_id).read();
             let score = self.scores.entry(token_id).read();
 
-            let status_str: ByteArray = if status_val == STATUS_NO_GAME {
-                "No Game"
+            let status_felt: felt252 = if status_val == STATUS_NO_GAME {
+                'No Game'
             } else if status_val == STATUS_PLAYING {
-                "Playing"
+                'Playing'
             } else if status_val == STATUS_WON {
-                "Won"
+                'Won'
             } else {
-                "Lost"
-            };
-
-            let attempts_str: ByteArray = if max_attempts == 0 {
-                "Unlimited"
-            } else {
-                format!("{}", max_attempts)
+                'Lost'
             };
 
             array![
-                GameDetail { name: "Wins", value: format!("{}", won) },
-                GameDetail { name: "Games Played", value: format!("{}", played) },
-                GameDetail { name: "Best Score", value: format!("{} guesses", best) },
-                GameDetail { name: "Perfect Games", value: format!("{}", perfect) },
-                GameDetail { name: "Current Guesses", value: format!("{}", current_guesses) },
-                GameDetail { name: "Status", value: status_str },
-                GameDetail { name: "Range", value: format!("{}-{}", range_min, range_max) },
-                GameDetail { name: "Max Attempts", value: attempts_str },
-                GameDetail { name: "Total Score", value: format!("{}", score) },
+                GameDetail { name: 'Wins', value: u128_to_ascii_felt(won.into()) },
+                GameDetail { name: 'Games Played', value: u128_to_ascii_felt(played.into()) },
+                GameDetail { name: 'Best Score', value: u128_to_ascii_felt(best.into()) },
+                GameDetail { name: 'Perfect Games', value: u128_to_ascii_felt(perfect.into()) },
+                GameDetail {
+                    name: 'Current Guesses', value: u128_to_ascii_felt(current_guesses.into()),
+                },
+                GameDetail { name: 'Status', value: status_felt },
+                GameDetail { name: 'Range Min', value: u128_to_ascii_felt(range_min.into()) },
+                GameDetail { name: 'Range Max', value: u128_to_ascii_felt(range_max.into()) },
+                GameDetail { name: 'Max Attempts', value: u128_to_ascii_felt(max_attempts.into()) },
+                GameDetail { name: 'Total Score', value: u128_to_ascii_felt(score.into()) },
             ]
                 .span()
         }
@@ -496,9 +494,11 @@ pub mod NumberGuess {
                 name,
                 description,
                 settings: array![
-                    GameSetting { name: 'Range Min', value: min.into() },
-                    GameSetting { name: 'Range Max', value: max.into() },
-                    GameSetting { name: 'Max Attempts', value: max_attempts.into() },
+                    GameSetting { name: 'Range Min', value: u128_to_ascii_felt(min.into()) },
+                    GameSetting { name: 'Range Max', value: u128_to_ascii_felt(max.into()) },
+                    GameSetting {
+                        name: 'Max Attempts', value: u128_to_ascii_felt(max_attempts.into()),
+                    },
                 ]
                     .span(),
             }
@@ -576,9 +576,21 @@ pub mod NumberGuess {
             let (name, description) = self.objective_metadata.entry(objective_id).read();
 
             // Build objectives array with type and threshold info
+            let type_str: felt252 = if objective_type == 1 {
+                'Win'
+            } else if objective_type == 2 {
+                'WinWithinN'
+            } else {
+                'PerfectGame'
+            };
             let mut objectives = array![];
-            objectives.append(GameObjective { name: 'type', value: objective_type.into() });
-            objectives.append(GameObjective { name: 'threshold', value: threshold.into() });
+            objectives.append(GameObjective { name: 'type', value: type_str });
+            objectives
+                .append(
+                    GameObjective {
+                        name: 'threshold', value: u128_to_ascii_felt(threshold.into()),
+                    },
+                );
 
             GameObjectiveDetails { name, description, objectives: objectives.span() }
         }
@@ -1034,9 +1046,9 @@ pub mod NumberGuess {
                         name: "Easy",
                         description: "Guess a number between 1 and 10",
                         settings: array![
-                            GameSetting { name: 'Range Min', value: 1 },
-                            GameSetting { name: 'Range Max', value: 10 },
-                            GameSetting { name: 'Max Attempts', value: 0 },
+                            GameSetting { name: 'Range Min', value: '1' },
+                            GameSetting { name: 'Range Max', value: '10' },
+                            GameSetting { name: 'Max Attempts', value: '0' },
                         ]
                             .span(),
                     },
@@ -1051,9 +1063,9 @@ pub mod NumberGuess {
                         name: "Medium",
                         description: "Guess a number between 1 and 100",
                         settings: array![
-                            GameSetting { name: 'Range Min', value: 1 },
-                            GameSetting { name: 'Range Max', value: 100 },
-                            GameSetting { name: 'Max Attempts', value: 10 },
+                            GameSetting { name: 'Range Min', value: '1' },
+                            GameSetting { name: 'Range Max', value: '100' },
+                            GameSetting { name: 'Max Attempts', value: '10' },
                         ]
                             .span(),
                     },
@@ -1068,9 +1080,9 @@ pub mod NumberGuess {
                         name: "Hard",
                         description: "Guess a number between 1 and 1000",
                         settings: array![
-                            GameSetting { name: 'Range Min', value: 1 },
-                            GameSetting { name: 'Range Max', value: 1000 },
-                            GameSetting { name: 'Max Attempts', value: 10 },
+                            GameSetting { name: 'Range Min', value: '1' },
+                            GameSetting { name: 'Range Max', value: '1000' },
+                            GameSetting { name: 'Max Attempts', value: '10' },
                         ]
                             .span(),
                     },
