@@ -80,31 +80,6 @@ pub trait INumberGuessInit<TContractState> {
 }
 
 // ==========================================================================
-// ASCII FELT CONVERSION
-// ==========================================================================
-
-/// Convert a u32 to a felt252 short string (ASCII digits).
-/// E.g. 100 -> 0x313030 ('100')
-fn u32_to_ascii_felt(mut value: u32) -> felt252 {
-    if value == 0 {
-        return '0';
-    }
-    let mut result: felt252 = 0;
-    let mut shift: felt252 = 1;
-    loop {
-        if value == 0 {
-            break;
-        }
-        let digit: u32 = value % 10;
-        let ascii: felt252 = (digit + 48).into(); // '0' = 48
-        result = result + ascii * shift;
-        shift = shift * 256; // shift left by one byte
-        value = value / 10;
-    }
-    result
-}
-
-// ==========================================================================
 // GAME STATUS CONSTANTS
 // ==========================================================================
 
@@ -237,6 +212,7 @@ pub mod NumberGuess {
     use game_components_embeddable_game_standard::minigame::minigame_component::MinigameComponent;
     use game_components_embeddable_game_standard::minigame::structs::GameDetail;
     use game_components_embeddable_game_standard::token::structs::unpack_settings_id;
+    use game_components_utilities::utils::encoding::u128_to_ascii_felt;
     use openzeppelin_introspection::src5::SRC5Component;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -244,7 +220,7 @@ pub mod NumberGuess {
     use starknet::{ContractAddress, get_contract_address};
     use super::{
         GuessMade, NewGameStarted, STATUS_LOST, STATUS_NO_GAME, STATUS_PLAYING, STATUS_WON,
-        calculate_score, pedersen_random, u32_to_ascii_felt,
+        calculate_score, pedersen_random,
     };
 
     // ======================================================================
@@ -406,32 +382,29 @@ pub mod NumberGuess {
             let max_attempts = self.max_attempts.entry(token_id).read();
             let score = self.scores.entry(token_id).read();
 
-            let status_str: ByteArray = if status_val == STATUS_NO_GAME {
-                "No Game"
+            let status_felt: felt252 = if status_val == STATUS_NO_GAME {
+                'No Game'
             } else if status_val == STATUS_PLAYING {
-                "Playing"
+                'Playing'
             } else if status_val == STATUS_WON {
-                "Won"
+                'Won'
             } else {
-                "Lost"
-            };
-
-            let attempts_str: ByteArray = if max_attempts == 0 {
-                "Unlimited"
-            } else {
-                format!("{}", max_attempts)
+                'Lost'
             };
 
             array![
-                GameDetail { name: "Wins", value: format!("{}", won) },
-                GameDetail { name: "Games Played", value: format!("{}", played) },
-                GameDetail { name: "Best Score", value: format!("{} guesses", best) },
-                GameDetail { name: "Perfect Games", value: format!("{}", perfect) },
-                GameDetail { name: "Current Guesses", value: format!("{}", current_guesses) },
-                GameDetail { name: "Status", value: status_str },
-                GameDetail { name: "Range", value: format!("{}-{}", range_min, range_max) },
-                GameDetail { name: "Max Attempts", value: attempts_str },
-                GameDetail { name: "Total Score", value: format!("{}", score) },
+                GameDetail { name: 'Wins', value: u128_to_ascii_felt(won.into()) },
+                GameDetail { name: 'Games Played', value: u128_to_ascii_felt(played.into()) },
+                GameDetail { name: 'Best Score', value: u128_to_ascii_felt(best.into()) },
+                GameDetail { name: 'Perfect Games', value: u128_to_ascii_felt(perfect.into()) },
+                GameDetail {
+                    name: 'Current Guesses', value: u128_to_ascii_felt(current_guesses.into()),
+                },
+                GameDetail { name: 'Status', value: status_felt },
+                GameDetail { name: 'Range Min', value: u128_to_ascii_felt(range_min.into()) },
+                GameDetail { name: 'Range Max', value: u128_to_ascii_felt(range_max.into()) },
+                GameDetail { name: 'Max Attempts', value: u128_to_ascii_felt(max_attempts.into()) },
+                GameDetail { name: 'Total Score', value: u128_to_ascii_felt(score.into()) },
             ]
                 .span()
         }
@@ -521,9 +494,11 @@ pub mod NumberGuess {
                 name,
                 description,
                 settings: array![
-                    GameSetting { name: 'Range Min', value: u32_to_ascii_felt(min) },
-                    GameSetting { name: 'Range Max', value: u32_to_ascii_felt(max) },
-                    GameSetting { name: 'Max Attempts', value: u32_to_ascii_felt(max_attempts) },
+                    GameSetting { name: 'Range Min', value: u128_to_ascii_felt(min.into()) },
+                    GameSetting { name: 'Range Max', value: u128_to_ascii_felt(max.into()) },
+                    GameSetting {
+                        name: 'Max Attempts', value: u128_to_ascii_felt(max_attempts.into()),
+                    },
                 ]
                     .span(),
             }
@@ -611,7 +586,11 @@ pub mod NumberGuess {
             let mut objectives = array![];
             objectives.append(GameObjective { name: 'type', value: type_str });
             objectives
-                .append(GameObjective { name: 'threshold', value: u32_to_ascii_felt(threshold) });
+                .append(
+                    GameObjective {
+                        name: 'threshold', value: u128_to_ascii_felt(threshold.into()),
+                    },
+                );
 
             GameObjectiveDetails { name, description, objectives: objectives.span() }
         }
