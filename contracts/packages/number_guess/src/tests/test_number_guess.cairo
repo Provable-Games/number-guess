@@ -1417,7 +1417,7 @@ fn test_settings_details_unlimited_attempts() {
     // settings[2] is "Max Attempts"
     let max_attempts_setting = settings_span.at(2);
     assert!(*max_attempts_setting.name == 'Max Attempts', "Third setting should be Max Attempts");
-    assert!(*max_attempts_setting.value == 0, "Easy mode should show 0 (unlimited)");
+    assert!(*max_attempts_setting.value == '0', "Easy mode should show '0' (unlimited)");
 }
 
 // --------------------------------------------------------------------------
@@ -1436,7 +1436,7 @@ fn test_settings_details_limited_attempts() {
     let settings_span = medium.settings;
     let max_attempts_setting = settings_span.at(2);
     assert!(*max_attempts_setting.name == 'Max Attempts', "Third setting should be Max Attempts");
-    assert!(*max_attempts_setting.value == 10, "Medium mode should show 10");
+    assert!(*max_attempts_setting.value == '10', "Medium mode should show '10'");
 }
 
 // --------------------------------------------------------------------------

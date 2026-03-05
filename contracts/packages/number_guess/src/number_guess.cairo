@@ -80,6 +80,31 @@ pub trait INumberGuessInit<TContractState> {
 }
 
 // ==========================================================================
+// ASCII FELT CONVERSION
+// ==========================================================================
+
+/// Convert a u32 to a felt252 short string (ASCII digits).
+/// E.g. 100 -> 0x313030 ('100')
+fn u32_to_ascii_felt(mut value: u32) -> felt252 {
+    if value == 0 {
+        return '0';
+    }
+    let mut result: felt252 = 0;
+    let mut shift: felt252 = 1;
+    loop {
+        if value == 0 {
+            break;
+        }
+        let digit: u32 = value % 10;
+        let ascii: felt252 = (digit + 48).into(); // '0' = 48
+        result = result + ascii * shift;
+        shift = shift * 256; // shift left by one byte
+        value = value / 10;
+    }
+    result
+}
+
+// ==========================================================================
 // GAME STATUS CONSTANTS
 // ==========================================================================
 
@@ -219,7 +244,7 @@ pub mod NumberGuess {
     use starknet::{ContractAddress, get_contract_address};
     use super::{
         GuessMade, NewGameStarted, STATUS_LOST, STATUS_NO_GAME, STATUS_PLAYING, STATUS_WON,
-        calculate_score, pedersen_random,
+        calculate_score, pedersen_random, u32_to_ascii_felt,
     };
 
     // ======================================================================
@@ -496,9 +521,9 @@ pub mod NumberGuess {
                 name,
                 description,
                 settings: array![
-                    GameSetting { name: 'Range Min', value: min.into() },
-                    GameSetting { name: 'Range Max', value: max.into() },
-                    GameSetting { name: 'Max Attempts', value: max_attempts.into() },
+                    GameSetting { name: 'Range Min', value: u32_to_ascii_felt(min) },
+                    GameSetting { name: 'Range Max', value: u32_to_ascii_felt(max) },
+                    GameSetting { name: 'Max Attempts', value: u32_to_ascii_felt(max_attempts) },
                 ]
                     .span(),
             }
@@ -576,9 +601,17 @@ pub mod NumberGuess {
             let (name, description) = self.objective_metadata.entry(objective_id).read();
 
             // Build objectives array with type and threshold info
+            let type_str: felt252 = if objective_type == 1 {
+                'Win'
+            } else if objective_type == 2 {
+                'WinWithinN'
+            } else {
+                'PerfectGame'
+            };
             let mut objectives = array![];
-            objectives.append(GameObjective { name: 'type', value: objective_type.into() });
-            objectives.append(GameObjective { name: 'threshold', value: threshold.into() });
+            objectives.append(GameObjective { name: 'type', value: type_str });
+            objectives
+                .append(GameObjective { name: 'threshold', value: u32_to_ascii_felt(threshold) });
 
             GameObjectiveDetails { name, description, objectives: objectives.span() }
         }
@@ -1034,9 +1067,9 @@ pub mod NumberGuess {
                         name: "Easy",
                         description: "Guess a number between 1 and 10",
                         settings: array![
-                            GameSetting { name: 'Range Min', value: 1 },
-                            GameSetting { name: 'Range Max', value: 10 },
-                            GameSetting { name: 'Max Attempts', value: 0 },
+                            GameSetting { name: 'Range Min', value: '1' },
+                            GameSetting { name: 'Range Max', value: '10' },
+                            GameSetting { name: 'Max Attempts', value: '0' },
                         ]
                             .span(),
                     },
@@ -1051,9 +1084,9 @@ pub mod NumberGuess {
                         name: "Medium",
                         description: "Guess a number between 1 and 100",
                         settings: array![
-                            GameSetting { name: 'Range Min', value: 1 },
-                            GameSetting { name: 'Range Max', value: 100 },
-                            GameSetting { name: 'Max Attempts', value: 10 },
+                            GameSetting { name: 'Range Min', value: '1' },
+                            GameSetting { name: 'Range Max', value: '100' },
+                            GameSetting { name: 'Max Attempts', value: '10' },
                         ]
                             .span(),
                     },
@@ -1068,9 +1101,9 @@ pub mod NumberGuess {
                         name: "Hard",
                         description: "Guess a number between 1 and 1000",
                         settings: array![
-                            GameSetting { name: 'Range Min', value: 1 },
-                            GameSetting { name: 'Range Max', value: 1000 },
-                            GameSetting { name: 'Max Attempts', value: 10 },
+                            GameSetting { name: 'Range Min', value: '1' },
+                            GameSetting { name: 'Range Max', value: '1000' },
+                            GameSetting { name: 'Max Attempts', value: '10' },
                         ]
                             .span(),
                     },
