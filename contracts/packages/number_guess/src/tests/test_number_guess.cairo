@@ -64,6 +64,7 @@ fn setup_number_guess() -> (INumberGuessDispatcher, ContractAddress) {
             denshokan_address,
             Option::Some(500),
             Option::None,
+            1,
         );
 
     (ng, ng_address)

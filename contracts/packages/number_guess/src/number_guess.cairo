@@ -75,6 +75,7 @@ pub trait INumberGuessInit<TContractState> {
         minigame_token_address: ContractAddress,
         royalty_fraction: Option<u128>,
         skills_address: Option<ContractAddress>,
+        version: u64,
     );
 }
 
@@ -906,6 +907,7 @@ pub mod NumberGuess {
             minigame_token_address: ContractAddress,
             royalty_fraction: Option<u128>,
             skills_address: Option<ContractAddress>,
+            version: u64,
         ) {
             let settings_address = match settings_address {
                 Option::Some(address) => {
@@ -946,6 +948,7 @@ pub mod NumberGuess {
                     minigame_token_address,
                     royalty_fraction,
                     skills_address,
+                    version,
                 );
 
             // Create default settings (3 difficulty levels)
